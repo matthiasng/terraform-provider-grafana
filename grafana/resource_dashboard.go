@@ -26,6 +26,11 @@ func ResourceDashboard() *schema.Resource {
 				Computed: true,
 			},
 
+			"dashboard_id": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+
 			"folder": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -86,6 +91,7 @@ func ReadDashboard(d *schema.ResourceData, meta interface{}) error {
 
 	d.SetId(dashboard.Meta.Slug)
 	d.Set("slug", dashboard.Meta.Slug)
+	d.Set("dashboard_id", dashboard.Model["id"])
 	d.Set("config_json", configJSON)
 	d.Set("folder", dashboard.Folder)
 
