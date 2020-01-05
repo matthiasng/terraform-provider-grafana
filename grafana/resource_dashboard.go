@@ -29,6 +29,11 @@ func ResourceDashboard() *schema.Resource {
 			"dashboard_id": {
 				Type:     schema.TypeInt,
 				Computed: true,
+			}
+      
+			"uid": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 
 			"folder": {
@@ -51,9 +56,7 @@ func CreateDashboard(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gapi.Client)
 
 	dashboard := gapi.Dashboard{}
-
-	dashboard.Model = prepareDashboardModel(d.Get("config_json").(string))
-
+	dashboard.Model = prepareDashboardModelForCreate(d.Get("config_json").(string))
 	dashboard.Folder = int64(d.Get("folder").(int))
 
 	resp, err := client.NewDashboard(dashboard)
@@ -92,6 +95,7 @@ func ReadDashboard(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(dashboard.Meta.Slug)
 	d.Set("slug", dashboard.Meta.Slug)
 	d.Set("dashboard_id", dashboard.Model["id"])
+	d.Set("uid", dashboard.Model["uid"])
 	d.Set("config_json", configJSON)
 	d.Set("folder", dashboard.Folder)
 
@@ -102,9 +106,7 @@ func UpdateDashboard(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*gapi.Client)
 
 	dashboard := gapi.Dashboard{}
-
-	dashboard.Model = prepareDashboardModel(d.Get("config_json").(string))
-
+	dashboard.Model = prepareDashboardModelForUpdate(d.Get("config_json").(string), d.Get("uid").(string))
 	dashboard.Folder = int64(d.Get("folder").(int))
 	dashboard.Overwrite = true
 
@@ -125,6 +127,24 @@ func DeleteDashboard(d *schema.ResourceData, meta interface{}) error {
 	return client.DeleteDashboard(slug)
 }
 
+func prepareDashboardModelForCreate(configJSON string) map[string]interface{} {
+	configMap := prepareDashboardModel(configJSON)
+
+	// Only exists in 5.0+
+	delete(configMap, "uid")
+
+	return configMap
+}
+
+func prepareDashboardModelForUpdate(configJSON string, uid string) map[string]interface{} {
+	configMap := prepareDashboardModel(configJSON)
+
+	// Only exists in 5.0+
+	configMap["uid"] = uid
+
+	return configMap
+}
+
 func prepareDashboardModel(configJSON string) map[string]interface{} {
 	configMap := map[string]interface{}{}
 	err := json.Unmarshal([]byte(configJSON), &configMap)
@@ -134,8 +154,6 @@ func prepareDashboardModel(configJSON string) map[string]interface{} {
 	}
 
 	delete(configMap, "id")
-	// Only exists in 5.0+
-	delete(configMap, "uid")
 	configMap["version"] = 0
 
 	return configMap
